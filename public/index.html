@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Online Social Bot</title>
+
+<style>
+body {
+  font-family: 'Sarabun', sans-serif;
+  background-color: #f0f2f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+.chat-container {
+  width: 100%;
+  max-width: 400px;
+  height: 600px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-header {
+  background: #7209b7;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+}
+.chat-box {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.message {
+  max-width: 80%;
+  padding: 10px 15px;
+  border-radius: 20px;
+}
+.bot-message {
+  align-self: flex-start;
+  background-color: #e4e6eb;
+}
+.user-message {
+  align-self: flex-end;
+  background-color: #7209b7;
+  color: white;
+}
+.input-area {
+  padding: 15px;
+  border-top: 1px solid #ddd;
+  display: flex;
+  gap: 10px;
+}
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+}
+button {
+  padding: 10px 20px;
+  background: #7209b7;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.status {
+  font-size: 0.8rem;
+  text-align: center;
+  color: gray;
+  padding: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">🌐 บอทแบ็ก (Online)</div>
+  <div class="status" id="statusText">กำลังเชื่อมต่อ...</div>
+  <div class="chat-box" id="chatBox">
+    <div class="message bot-message">สวัสดีครับ! ผมใช้สมองออนไลน์</div>
+  </div>
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="พิมพ์ข้อความ...">
+    <button id="sendBtn">ส่ง</button>
+  </div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getDatabase, ref, get, child, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+/* ---------- Firebase Config ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDUkl6EAnBEbTXPu8KQPSa4AVS5m29dHPQ",
+  authDomain: "botyongthong.firebaseapp.com",
+  projectId: "botyongthong",
+  storageBucket: "botyongthong.firebasestorage.app",
+  messagingSenderId: "593669967175",
+  appId: "1:593669967175:web:111d1041289be8103a5062",
+  databaseURL: "https://botyongthong-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+/* ---------- Init ---------- */
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dbRef = ref(db);
+
+document.getElementById("statusText").innerText = "✅ เชื่อมต่อแล้ว";
+
+/* ---------- AI ---------- */
+async function askAI(message) {
+  const response = await fetch("http://localhost:3000/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message })
+  });
+
+  const data = await response.json();
+  return data.reply;
+}
+
+/* ---------- UI ---------- */
+const chatBox = document.getElementById("chatBox");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+
+sendBtn.addEventListener("click", sendMessage);
+userInput.addEventListener("keypress", e => {
+  if (e.key === "Enter") sendMessage();
+});
+
+function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  addMessage(text, "user-message");
+  userInput.value = "";
+  checkBrain(text);
+}
+
+function addMessage(text, className) {
+  const div = document.createElement("div");
+  div.classList.add("message", className);
+  div.innerText = text;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/* ---------- Brain ---------- */
+function checkBrain(question) {
+  const cleanKey = question.toLowerCase().replace(/[.#$/\[\]]/g, "");
+
+  get(child(dbRef, `knowledge/${cleanKey}`))
+    .then(snapshot => {
+      if (snapshot.exists()) {
+        addMessage(snapshot.val(), "bot-message");
+      } else {
+        addMessage("กำลังคิด...", "bot-message");
+
+        askAI(question)
+          .then(reply => {
+            addMessage(reply, "bot-message");
+
+            // บันทึกลงฐานข้อมูล
+            set(ref(db, `knowledge/${cleanKey}`), reply);
+          })
+          .catch(() => {
+            addMessage("AI ตอบไม่ได้ครับ", "bot-message");
+          });
+      }
+    })
+    .catch(() => {
+      addMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ", "bot-message");
+    });
+}
+
+</script>
+
+</body>
+</html>
