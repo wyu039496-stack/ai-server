@@ -79,4 +79,6 @@ firebase-debug.log
 
 # Logs
 *.log
+node_modules
+.env
 
