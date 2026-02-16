@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>AI Chat Bot</title>
+<style>
+body { font-family: sans-serif; background:#f2f2f2; padding:20px }
+#chat { background:#fff; padding:10px; height:300px; overflow:auto }
+input, button { padding:8px; margin-top:10px }
+</style>
+</head>
+<body>
+
+<h2>🤖 AI Chat</h2>
+<div id="chat"></div>
+
+<input id="msg" placeholder="พิมพ์ข้อความ..." />
+<button onclick="send()">ส่ง</button>
+
+<script>
+async function send() {
+  const msg = document.getElementById("msg").value;
+  if (!msg) return;
+
+  const chat = document.getElementById("chat");
+  chat.innerHTML += "<p><b>คุณ:</b> " + msg + "</p>";
+
+  const res = await fetch("https://ai-server-ay8z.onrender.com/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: msg })
+  });
+
+  const data = await res.json();
+  chat.innerHTML += "<p><b>บอท:</b> " + (data.reply || "ไม่สามารถตอบได้") + "</p>";
+
+  document.getElementById("msg").value = "";
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>
+
+</body>
+</html>
