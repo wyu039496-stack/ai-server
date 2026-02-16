@@ -1,43 +1,34 @@
-import express from "express";
-import cors from "cors";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static("public"));
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-async function generateWithRetry(prompt, retry = 3) {
-  try {
-    return await model.generateContent(prompt);
-  } catch (err) {
-    if (err.status === 429 && retry > 0) {
-      console.log("Quota เต็ม รอ 5 วิ...");
-      await new Promise(r => setTimeout(r, 5000));
-      return generateWithRetry(prompt, retry - 1);
-    }
-    throw err;
-  }
-}
-
 app.post("/chat", async (req, res) => {
   try {
-    const userMessage = req.body.message;
+    console.log("📩 body:", req.body);
+
+    // ❗ เช็ก API KEY ก่อน
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        reply: "❌ ไม่พบ GEMINI_API_KEY ใน Render"
+      });
+    }
+
+    const userMessage = req.body?.message;
+    if (!userMessage) {
+      return res.json({ reply: "❌ ไม่มีข้อความส่งมา" });
+    }
 
     const systemPrompt = `
 คุณคือแชทบอทภาษาไทย
-- ใช้คำลงท้ายว่า "ครับ" เท่านั้น
+- ใช้คำลงท้ายว่า "ครับ"
 - ห้ามใช้ "ค่ะ"
-- ตอบสุภาพ กระชับ เข้าใจง่าย
+- ตอบสุภาพ กระชับ
 `;
 
     const result = await generateWithRetry(
       systemPrompt + "\nผู้ใช้: " + userMessage
     );
+
+    // ❗ กันกรณี Gemini ไม่ตอบ
+    if (!result?.response?.text) {
+      return res.json({ reply: "⚠️ AI ไม่ตอบกลับ" });
+    }
 
     res.json({
       reply: result.response.text()
@@ -56,9 +47,4 @@ app.post("/chat", async (req, res) => {
       error: error.message
     });
   }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
 });
