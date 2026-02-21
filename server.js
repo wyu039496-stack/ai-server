@@ -20,16 +20,20 @@ if (fs.existsSync(MEMORY_FILE)) {
 }
 
 // ===== Gemini =====
+if (!process.env.GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY not found");
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ ใช้โมเดลที่รองรับแน่นอน
+// ✅ โมเดลที่ถูกต้อง
 const model = genAI.getGenerativeModel({
-  model: "gemini-pro"
+  model: "gemini-1.0-pro"
 });
 
-async function generateWithRetry(prompt) {
+async function generateAI(prompt) {
   const result = await model.generateContent(prompt);
-  return result;
+  return result.response.text();
 }
 
 // ===== CHAT =====
@@ -40,7 +44,7 @@ app.post("/chat", async (req, res) => {
       return res.json({ reply: "❌ ไม่มีข้อความส่งมา" });
     }
 
-    // ถ้ามีใน memory
+    // ตอบจากความจำก่อน
     if (memory[msg]) {
       return res.json({ reply: memory[msg] });
     }
@@ -52,11 +56,9 @@ app.post("/chat", async (req, res) => {
 - ตอบสุภาพ กระชับ
 `;
 
-    const result = await generateWithRetry(
+    const reply = await generateAI(
       systemPrompt + "\nผู้ใช้: " + msg
     );
-
-    const reply = result.response.text();
 
     // จำคำตอบ
     memory[msg] = reply;
@@ -65,7 +67,7 @@ app.post("/chat", async (req, res) => {
     res.json({ reply });
 
   } catch (err) {
-    console.error("🔥 CHAT ERROR:", err.message);
+    console.error("🔥 CHAT ERROR FULL:", err);
     res.json({
       reply: "⚠️ ระบบขัดข้อง กรุณาลองใหม่ครับ"
     });
@@ -80,6 +82,10 @@ app.post("/teach", (req, res) => {
     return res.status(403).json({ msg: "❌ ไม่ใช่แอดมิน" });
   }
 
+  if (!question || !answer) {
+    return res.json({ msg: "❌ ข้อมูลไม่ครบ" });
+  }
+
   memory[question.trim()] = answer.trim();
   fs.writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
 
@@ -91,5 +97,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("🚀 Server started on", PORT);
+  console.log("🚀 Server running on port", PORT);
 });
