@@ -1,66 +1,56 @@
 import express from "express";
+import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import cors from "cors";
 
-// แก้ __dirname สำหรับ ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express(); // ต้องสร้าง app ก่อน
-const PORT = process.env.PORT || 3000; // Render จะกำหนด Port ให้เองผ่าน Environment Variable
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// middleware
-app.use(cors()); // วางไว้หลัง const app
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// =========================
-// CHAT API
-// =========================
-app.post("/chat", async (req, res) => {
-  try {
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY not set");
-    }
-
-    const userMessage = req.body.message;
-
-    // เปลี่ยนจาก gemini-2.5-pro (ซึ่งอาจยังไม่มี) เป็น gemini-1.5-flash หรือ pro ที่เสถียรกว่า
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: userMessage }] }
-          ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    // เพิ่มการดักจับกรณี API ส่ง Error กลับมา
-    if (data.error) {
-        console.error("Gemini Error:", data.error.message);
-        return res.json({ reply: "⚠️ AI แจ้งข้อผิดพลาด: " + data.error.message });
-    }
-
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ AI ไม่ตอบกลับ";
-    res.json({ reply });
-
-  } catch (err) {
-    console.error("🔥 ERROR:", err.message);
-    res.json({ reply: "⚠️ ระบบขัดข้อง กรุณาลองใหม่ครับ" });
-  }
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// =========================
-// START
-// =========================
+app.post("/chat", async (req, res) => {
+    try {
+        const { message } = req.body;
+        const apiKey = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : null;
+
+        if (!apiKey) return res.json({ reply: "⚠️ กรุณาตั้งค่า GROQ_API_KEY ใน Render" });
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { 
+                        role: "system", 
+                        content: "คุณคือ AI ผู้ช่วยที่แสนใจดี ตอบเป็นภาษาไทยอย่างเป็นกันเอง และจะทักทายอย่างร่าเริงเมื่อผู้ใช้เปิดแชทเข้ามา" 
+                    },
+                    { role: "user", content: message }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || "⚠️ ขออภัย ฉันไม่สามารถตอบได้ในขณะนี้";
+        res.json({ reply });
+
+    } catch (err) {
+        res.json({ reply: "⚠️ ระบบขัดข้อง: " + err.message });
+    }
+});
+
 app.listen(PORT, () => {
-  console.log(`✅ Server running → Port ${PORT}`);
+    console.log(`✅ Server is online on port ${PORT}`);
 });
