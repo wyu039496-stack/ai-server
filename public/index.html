@@ -3,30 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My AI Assistant</title>
+    <title>AI Chat Assistant</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #chat-window { width: 100%; max-width: 500px; height: 90vh; background: white; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; }
-        #header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; }
-        #chat-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #fafafa; }
-        .message { max-width: 80%; padding: 10px 15px; border-radius: 15px; line-height: 1.4; font-size: 0.95rem; word-wrap: break-word; }
-        .user { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 2px; }
-        .bot { align-self: flex-start; background: #e9e9eb; color: #333; border-bottom-left-radius: 2px; }
-        #input-area { padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
-        button { background: #007bff; color: white; border: none; padding: 0 20px; border-radius: 25px; cursor: pointer; font-weight: bold; }
-        .typing { font-size: 0.8rem; color: #888; padding: 5px 20px; display: none; }
+        * { box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
+        body { background: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #chat-window { width: 100%; max-width: 500px; height: 90vh; background: white; border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
+        #header { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
+        #chat-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #f9f9f9; }
+        .message { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.5; }
+        .user { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .bot { align-self: flex-start; background: #eef0f2; color: #2c3e50; border-bottom-left-radius: 4px; }
+        #typing { font-size: 0.8rem; color: #999; padding: 0 20px 10px; display: none; }
+        #input-area { padding: 20px; display: flex; gap: 10px; border-top: 1px solid #eee; background: white; }
+        input { flex: 1; padding: 12px 20px; border: 1px solid #ddd; border-radius: 30px; outline: none; font-size: 1rem; }
+        button { background: #007bff; color: white; border: none; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #0056b3; }
     </style>
 </head>
 <body>
 
 <div id="chat-window">
-    <div id="header">🤖 My AI Assistant</div>
+    <div id="header">🤖 AI Assistant</div>
     <div id="chat-container"></div>
-    <div class="typing" id="typing-indicator">AI กำลังพิมพ์...</div>
+    <div id="typing">AI กำลังคิด...</div>
     <div id="input-area">
-        <input type="text" id="userInput" placeholder="พิมพ์ข้อความที่นี่...">
+        <input type="text" id="userInput" placeholder="Type something...">
         <button onclick="sendMessage()">ส่ง</button>
     </div>
 </div>
@@ -34,7 +35,7 @@
 <script>
     const chatContainer = document.getElementById('chat-container');
     const userInput = document.getElementById('userInput');
-    const typingIndicator = document.getElementById('typing-indicator');
+    const typingIndicator = document.getElementById('typing');
 
     function appendMessage(sender, text) {
         const msgDiv = document.createElement('div');
@@ -61,23 +62,21 @@
             const data = await res.json();
             appendMessage('bot', data.reply);
         } catch (err) {
-            appendMessage('bot', '❌ ขออภัยครับ ระบบขัดข้อง');
+            appendMessage('bot', '❌ ขออภัย ระบบเกิดข้อผิดพลาดครับ');
         } finally {
             typingIndicator.style.display = 'none';
         }
     }
 
-    // แก้ไข: ให้ทักทายครั้งแรกครั้งเดียวโดยใช้ sessionStorage
+    // ทักทายครั้งแรกครั้งเดียวเมื่อเปิดแท็บใหม่
     window.onload = () => {
         if (!sessionStorage.getItem('hasGreeted')) {
-            sendMessage("สวัสดี! ช่วยทักทายฉันสั้นๆ อย่างสุภาพหน่อย", true);
+            sendMessage("สวัสดี! ช่วยทักทายฉันสั้นๆ หน่อยครับ", true);
             sessionStorage.setItem('hasGreeted', 'true');
         }
     };
 
-    userInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") sendMessage();
-    });
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
 </script>
 
 </body>
