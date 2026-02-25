@@ -19,10 +19,23 @@ app.get("/", (req, res) => {
 
 app.post("/chat", async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, history } = req.body; // รับประวัติการคุยจากหน้าบ้าน
         const apiKey = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : null;
 
         if (!apiKey) return res.json({ reply: "⚠️ ไม่พบ API KEY ในระบบครับ" });
+
+        // สร้างชุดข้อความที่จะส่งให้ AI โดยเริ่มจาก System Prompt
+        const messagesToSend = [
+            { 
+                role: "system", 
+                content: `You are a helpful assistant. Follow these rules strictly:
+                1. If the user speaks THAI: Respond in Thai and ALWAYS end every response with 'ครับ'.
+                2. If the user speaks ENGLISH: Respond in polite, professional English. Do NOT use 'ครับ' or 'krub'.
+                3. Use the provided chat history to understand context.`
+            },
+            ...history, // ใส่ประวัติการคุย (Memory)
+            { role: "user", content: message } // ข้อความล่าสุด
+        ];
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -32,16 +45,7 @@ app.post("/chat", async (req, res) => {
             },
             body: JSON.stringify({
                 model: "llama-3.3-70b-versatile",
-                messages: [
-                    { 
-                        role: "system", 
-                        content: `You are a helpful assistant. Follow these rules strictly:
-                        1. If the user speaks THAI: Respond in Thai and ALWAYS end every sentence or response with 'ครับ'.
-                        2. If the user speaks ENGLISH: Respond in polite, professional English. Do NOT use 'ครับ' or 'krub' in English responses.
-                        3. Be friendly and maintain the language used by the user.`
-                    },
-                    { role: "user", content: message }
-                ]
+                messages: messagesToSend
             })
         });
 
@@ -53,4 +57,4 @@ app.post("/chat", async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server online on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server online with Memory on port ${PORT}`));
