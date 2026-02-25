@@ -22,7 +22,7 @@ app.post("/chat", async (req, res) => {
         const { message } = req.body;
         const apiKey = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : null;
 
-        if (!apiKey) return res.json({ reply: "⚠️ ไม่พบ API KEY" });
+        if (!apiKey) return res.json({ reply: "⚠️ ไม่พบ API KEY ในระบบครับ" });
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -35,8 +35,10 @@ app.post("/chat", async (req, res) => {
                 messages: [
                     { 
                         role: "system", 
-                        // เพิ่มคำสั่งให้ลงท้ายด้วย "ครับ" เสมอ
-                        content: "คุณคือผู้ช่วยภาษาไทยที่แสนใจดี ตอบสุภาพ และต้องลงท้ายด้วยคำว่า 'ครับ' ในทุกๆ ประโยคหรือทุกๆ คำตอบเสมอ" 
+                        content: `You are a helpful assistant. Follow these rules strictly:
+                        1. If the user speaks THAI: Respond in Thai and ALWAYS end every sentence or response with 'ครับ'.
+                        2. If the user speaks ENGLISH: Respond in polite, professional English. Do NOT use 'ครับ' or 'krub' in English responses.
+                        3. Be friendly and maintain the language used by the user.`
                     },
                     { role: "user", content: message }
                 ]
@@ -44,11 +46,11 @@ app.post("/chat", async (req, res) => {
         });
 
         const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || "⚠️ AI ไม่ตอบกลับ";
+        const reply = data.choices?.[0]?.message?.content || "⚠️ AI ไม่ตอบกลับครับ";
         res.json({ reply });
     } catch (err) {
-        res.json({ reply: "⚠️ ระบบขัดข้อง: " + err.message });
+        res.json({ reply: "⚠️ ระบบขัดข้อง กรุณาลองใหม่ครับ" });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server online on port ${PORT}`));
