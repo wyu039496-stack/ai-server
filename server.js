@@ -19,22 +19,19 @@ app.get("/", (req, res) => {
 
 app.post("/chat", async (req, res) => {
     try {
-        const { message, history } = req.body; // รับประวัติการคุยจากหน้าบ้าน
+        const { message, history } = req.body;
         const apiKey = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : null;
 
-        if (!apiKey) return res.json({ reply: "⚠️ ไม่พบ API KEY ในระบบครับ" });
+        if (!apiKey) return res.json({ reply: "⚠️ ไม่พบ API KEY ครับ" });
 
-        // สร้างชุดข้อความที่จะส่งให้ AI โดยเริ่มจาก System Prompt
+        // ปรับปรุง System Prompt ให้กระชับและชัดเจนขึ้น เพื่อลดโอกาสภาษาเพี้ยน
         const messagesToSend = [
             { 
                 role: "system", 
-                content: `You are a helpful assistant. Follow these rules strictly:
-                1. If the user speaks THAI: Respond in Thai and ALWAYS end every response with 'ครับ'.
-                2. If the user speaks ENGLISH: Respond in polite, professional English. Do NOT use 'ครับ' or 'krub'.
-                3. Use the provided chat history to understand context.`
+                content: "คุณคือผู้ช่วยภาษาไทยที่สุภาพ ถ้าผู้ใช้พิมพ์ไทยให้ตอบไทยและลงท้ายด้วย 'ครับ' เสมอ ถ้าพิมพ์อังกฤษให้ตอบอังกฤษแบบสุภาพโดยไม่ต้องลงท้ายด้วย 'ครับ' และห้ามตอบเป็นภาษาอื่นที่ผู้ใช้ไม่ได้ใช้งาน"
             },
-            ...history, // ใส่ประวัติการคุย (Memory)
-            { role: "user", content: message } // ข้อความล่าสุด
+            ...history, 
+            { role: "user", content: message }
         ];
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -45,16 +42,27 @@ app.post("/chat", async (req, res) => {
             },
             body: JSON.stringify({
                 model: "llama-3.3-70b-versatile",
-                messages: messagesToSend
+                messages: messagesToSend,
+                temperature: 0.6, // ลดค่าความสุ่มลงเพื่อให้ AI ตอบแม่นยำขึ้น ไม่มโนเอง
+                max_tokens: 1024,
+                top_p: 1
             })
         });
 
         const data = await response.json();
+        
+        // ตรวจสอบ Error จาก API โดยตรง
+        if (data.error) {
+            console.error("Groq API Error:", data.error);
+            return res.json({ reply: "❌ AI มึนงงชั่วคราว กรุณาลองใหม่ครับ" });
+        }
+
         const reply = data.choices?.[0]?.message?.content || "⚠️ AI ไม่ตอบกลับครับ";
         res.json({ reply });
     } catch (err) {
-        res.json({ reply: "⚠️ ระบบขัดข้อง กรุณาลองใหม่ครับ" });
+        console.error("Server Crash:", err);
+        res.json({ reply: "⚠️ ระบบขัดข้องครับ" });
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server online with Memory on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server Fixed & Online`));
