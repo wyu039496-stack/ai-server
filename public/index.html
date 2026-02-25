@@ -6,30 +6,55 @@
     <title>Gemini AI Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* UI คงเดิมตามที่คุณต้องการ */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Prompt', sans-serif; background: #eef2f7; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .chat-container { width: 100%; max-width: 500px; height: 90vh; background: #fff; border-radius: 24px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #7209b7, #3a0ca3); color: #fff; padding: 20px; text-align: center; font-weight: 600; font-size: 1.1rem; }
+        .chat-container { width: 100%; max-width: 500px; height: 95vh; background: #fff; border-radius: 24px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #7209b7, #3a0ca3); color: #fff; padding: 15px; text-align: center; font-weight: 600; }
+        
         #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #fdfdfd; }
-        .msg { padding: 12px 18px; border-radius: 20px; max-width: 80%; font-size: 0.95rem; line-height: 1.6; word-wrap: break-word; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg { padding: 12px 18px; border-radius: 20px; max-width: 85%; font-size: 0.95rem; line-height: 1.6; word-wrap: break-word; }
         .user { background: #7209b7; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .bot { background: #f0f0f0; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; white-space: pre-wrap; }
-        .typing { font-size: 0.8rem; color: #7209b7; padding: 0 20px 10px; display: none; font-weight: 500; }
-        .input-area { padding: 20px; display: flex; gap: 12px; border-top: 1px solid #f0f0f0; }
-        input { flex: 1; padding: 12px 20px; border: 2px solid #f0f0f0; border-radius: 30px; outline: none; font-family: 'Prompt', sans-serif; }
-        button { background: #7209b7; color: white; border: none; padding: 0 25px; border-radius: 30px; cursor: pointer; font-weight: 600; font-family: 'Prompt', sans-serif; }
+
+        /* ปรับปรุงส่วน Input ให้รองรับข้อความยาว */
+        .input-area { padding: 15px; display: flex; gap: 10px; border-top: 1px solid #f0f0f0; align-items: flex-end; }
+        
+        textarea {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #f0f0f0;
+            border-radius: 20px;
+            outline: none;
+            transition: 0.3s;
+            font-family: 'Prompt', sans-serif;
+            resize: none; /* ปิดการลากขยายด้วยมือ */
+            max-height: 150px; /* กำหนดความสูงสูงสุด */
+            min-height: 45px;
+            overflow-y: auto;
+        }
+        textarea:focus { border-color: #7209b7; }
+        
+        button {
+            background: #7209b7;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            align-self: flex-end; /* ให้ปุ่มอยู่ชิดล่างเสมอ */
+        }
+        .typing { font-size: 0.8rem; color: #7209b7; padding: 5px 20px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
-    <div class="header">✨ AI Assassin </div>
+    <div class="header">✨ Gemini AI Assistant</div>
     <div id="chat-box"></div>
     <div class="typing" id="typing-indicator">AI กำลังคิด...</div>
     <div class="input-area">
-        <input type="text" id="userInput" placeholder="พิมพ์ข้อความที่นี่...">
+        <textarea id="userInput" placeholder="พิมพ์ข้อความยาวๆ ได้ที่นี่..." rows="1" oninput="autoResize(this)"></textarea>
         <button onclick="handleSend()">ส่ง</button>
     </div>
 </div>
@@ -38,9 +63,13 @@
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('userInput');
     const typingIndicator = document.getElementById('typing-indicator');
-
-    // ตัวแปรสำหรับเก็บ Memory ในเซสชั่นนี้
     let chatHistory = [];
+
+    // ฟังก์ชันปรับความสูง textarea อัตโนมัติ
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
 
     function appendMessage(sender, text) {
         const msgDiv = document.createElement('div');
@@ -55,31 +84,27 @@
         if (!message) return;
 
         if (!isSilent) appendMessage('user', message);
+        
+        // ล้างค่าและรีเซ็ตความสูง
         userInput.value = '';
+        userInput.style.height = '45px'; 
+        
         typingIndicator.style.display = 'block';
 
         try {
             const res = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: message,
-                    history: chatHistory // ส่ง Memory ไปด้วย
-                })
+                body: JSON.stringify({ message: message, history: chatHistory })
             });
             const data = await res.json();
-            
             appendMessage('bot', data.reply);
 
-            // บันทึกข้อความลงใน Memory หลังจากคุยเสร็จ
             chatHistory.push({ role: "user", content: message });
             chatHistory.push({ role: "assistant", content: data.reply });
-
-            // จำกัด Memory ไม่ให้ยาวเกินไป (เช่น จำแค่ 10 ประโยคล่าสุดเพื่อไม่ให้ API หน่วง)
             if (chatHistory.length > 20) chatHistory.shift();
-
         } catch (err) {
-            appendMessage('bot', '❌ ขออภัยครับ ระบบขัดข้อง');
+            appendMessage('bot', '❌ ระบบขัดข้องครับ');
         } finally {
             typingIndicator.style.display = 'none';
         }
@@ -92,7 +117,13 @@
         }
     };
 
-    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") handleSend(); });
+    // กด Enter เพื่อส่ง (Shift+Enter เพื่อขึ้นบรรทัดใหม่)
+    userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    });
 </script>
 
 </body>
